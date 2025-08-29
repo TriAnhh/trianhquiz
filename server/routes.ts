@@ -112,6 +112,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Allow students to change question number (without authentication)
+  app.patch('/api/quiz-sessions/:id/question', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { currentQuestionNumber } = req.body;
+      
+      // Only allow updating question number
+      const session = await storage.updateQuizSession(id, {
+        currentQuestionNumber: parseInt(currentQuestionNumber)
+      });
+      res.json(session);
+    } catch (error) {
+      console.error("Error updating question number:", error);
+      res.status(400).json({ message: "Failed to update question number" });
+    }
+  });
+
   // Answer routes
   app.post('/api/answers', async (req, res) => {
     try {
@@ -121,6 +138,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error submitting answer:", error);
       res.status(400).json({ message: "Failed to submit answer" });
+    }
+  });
+
+  // Get student's answer for a specific question
+  app.get('/api/answers/:studentId/:sessionId/:questionNumber', async (req, res) => {
+    try {
+      const { studentId, sessionId, questionNumber } = req.params;
+      const answer = await storage.getStudentAnswer(studentId, sessionId, parseInt(questionNumber));
+      res.json(answer || null);
+    } catch (error) {
+      console.error("Error fetching student answer:", error);
+      res.status(500).json({ message: "Failed to fetch student answer" });
     }
   });
 

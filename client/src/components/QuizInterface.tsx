@@ -44,9 +44,7 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
             title: "Câu hỏi mới",
             description: `Chuyển sang câu hỏi số ${data.questionNumber}`,
           });
-          // Reset answer state for new question
-          setSelectedAnswer(null);
-          setHasAnswered(false);
+          // Don't reset when admin changes question - students should see their previous answers
         }
       }
     }
@@ -84,18 +82,33 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
     refetchInterval: 2000, // Refresh every 2 seconds
   });
 
+  // Load student's answer for current question
+  const { data: currentAnswer } = useQuery({
+    queryKey: ["/api/answers", student.id, session?.id, session?.currentQuestionNumber],
+    enabled: !!session?.id && !!session?.currentQuestionNumber,
+  });
+
+  // Update selected answer when question changes or answer is loaded
+  useEffect(() => {
+    if (currentAnswer && 'selectedOption' in currentAnswer) {
+      setSelectedAnswer(currentAnswer.selectedOption);
+      setHasAnswered(true);
+    } else {
+      setSelectedAnswer(null);
+      setHasAnswered(false);
+    }
+  }, [currentAnswer, session?.currentQuestionNumber]);
+
   const updateQuestionMutation = useMutation({
     mutationFn: async (questionNumber: number) => {
-      const response = await apiRequest("PATCH", `/api/quiz-sessions/${session.id}`, {
+      const response = await apiRequest("PATCH", `/api/quiz-sessions/${session.id}/question`, {
         currentQuestionNumber: questionNumber
       });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/current"] });
-      // Reset answer state for new question
-      setSelectedAnswer(null);
-      setHasAnswered(false);
+      // Don't reset answer state - let students keep their answers when navigating
       sendMessage({
         type: 'question_changed',
         sessionId: session.id,

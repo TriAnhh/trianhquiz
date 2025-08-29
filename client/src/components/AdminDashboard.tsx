@@ -91,20 +91,31 @@ export default function AdminDashboard() {
 
   const startQuizMutation = useMutation({
     mutationFn: async () => {
+      let sessionId;
+      
       if (!currentSession) {
-        await createSessionMutation.mutateAsync();
-        const newSession = queryClient.getQueryData(["/api/quiz-sessions/current"]);
-        if (newSession) {
-          const response = await apiRequest("POST", `/api/quiz-sessions/${(newSession as any).id}/start`);
-          return response.json();
-        }
+        // Create new session first
+        const createResponse = await apiRequest("POST", "/api/quiz-sessions", {
+          title: "Quiz Session",
+          duration: quizDuration,
+        });
+        const newSession = await createResponse.json();
+        sessionId = newSession.id;
       } else {
-        const response = await apiRequest("POST", `/api/quiz-sessions/${currentSession.id}/start`);
-        return response.json();
+        sessionId = currentSession.id;
       }
+      
+      // Start the session
+      const response = await apiRequest("POST", `/api/quiz-sessions/${sessionId}/start`);
+      return response.json();
     },
-    onSuccess: () => {
-      sendMessage({ type: 'quiz_started' });
+    onSuccess: (session) => {
+      sendMessage({ 
+        type: 'quiz_started',
+        sessionId: session.id,
+        duration: session.duration,
+        questionNumber: session.currentQuestionNumber
+      });
       toast({
         title: "Bài trắc nghiệm đã bắt đầu",
         description: "Học sinh có thể bắt đầu làm bài",
@@ -136,8 +147,11 @@ export default function AdminDashboard() {
       const response = await apiRequest("POST", `/api/quiz-sessions/${currentSession.id}/stop`);
       return response.json();
     },
-    onSuccess: () => {
-      sendMessage({ type: 'quiz_stopped' });
+    onSuccess: (session) => {
+      sendMessage({ 
+        type: 'quiz_stopped',
+        sessionId: session.id
+      });
       toast({
         title: "Bài trắc nghiệm đã dừng",
         description: "Học sinh không thể làm bài nữa",
@@ -171,14 +185,15 @@ export default function AdminDashboard() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (session) => {
       sendMessage({ 
         type: 'question_changed', 
-        questionNumber: questionNumber 
+        sessionId: session.id,
+        questionNumber: session.currentQuestionNumber
       });
       toast({
         title: "Đã chuyển câu hỏi",
-        description: `Chuyển sang câu hỏi số ${questionNumber}`,
+        description: `Chuyển sang câu hỏi số ${session.currentQuestionNumber}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/current"] });
     },

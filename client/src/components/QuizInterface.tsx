@@ -23,8 +23,27 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
 
   const { sendMessage } = useWebSocket({
     onMessage: (data: any) => {
+      console.log('WebSocket message received:', data);
       if (data.type === 'quiz_started' || data.type === 'quiz_stopped' || data.type === 'question_changed') {
         queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/current"] });
+        
+        if (data.type === 'quiz_started') {
+          toast({
+            title: "Bài trắc nghiệm đã bắt đầu",
+            description: "Bạn có thể bắt đầu chọn đáp án",
+          });
+        } else if (data.type === 'quiz_stopped') {
+          toast({
+            title: "Bài trắc nghiệm đã kết thúc",
+            description: "Không thể chọn đáp án nữa",
+            variant: "destructive",
+          });
+        } else if (data.type === 'question_changed') {
+          toast({
+            title: "Câu hỏi mới",
+            description: `Chuyển sang câu hỏi số ${data.questionNumber}`,
+          });
+        }
       }
     }
   });

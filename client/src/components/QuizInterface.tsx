@@ -22,7 +22,7 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
   const queryClient = useQueryClient();
 
   const { sendMessage } = useWebSocket({
-    onMessage: (data) => {
+    onMessage: (data: any) => {
       if (data.type === 'quiz_started' || data.type === 'quiz_stopped' || data.type === 'question_changed') {
         queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/current"] });
       }

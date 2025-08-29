@@ -128,8 +128,7 @@ export class DatabaseStorage implements IStorage {
     const [session] = await db.update(quizSessions)
       .set({ 
         isActive: true, 
-        startTime: new Date(),
-        endTime: sql`${quizSessions.startTime} + interval '${quizSessions.duration} minutes'`
+        startTime: new Date()
       })
       .where(eq(quizSessions.id, id))
       .returning();

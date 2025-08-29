@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
 
   const { sendMessage } = useWebSocket({
-    onMessage: (data) => {
+    onMessage: (data: any) => {
       if (data.type === 'answer_submitted') {
         queryClient.invalidateQueries({ 
           queryKey: ["/api/quiz-sessions", data.sessionId, "questions", data.questionNumber, "stats"] 
@@ -38,17 +38,17 @@ export default function AdminDashboard() {
     }
   });
 
-  const { data: currentSession } = useQuery({
+  const { data: currentSession } = useQuery<any>({
     queryKey: ["/api/quiz-sessions/current"],
     refetchInterval: 5000,
   });
 
-  const { data: activeStudents } = useQuery({
+  const { data: activeStudents } = useQuery<any[]>({
     queryKey: ["/api/students/active"],
     refetchInterval: 3000,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<any>({
     queryKey: ["/api/quiz-sessions", currentSession?.id, "questions", currentSession?.currentQuestionNumber, "stats"],
     enabled: !!currentSession?.id && !!currentSession?.currentQuestionNumber,
     refetchInterval: 2000,

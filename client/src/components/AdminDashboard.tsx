@@ -364,42 +364,75 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="directQuestionNumber" className="text-sm font-medium text-foreground">
+                      Chuyển tới câu hỏi
+                    </Label>
+                    <Input
+                      id="directQuestionNumber"
+                      type="number"
+                      min="1"
+                      max={currentSession?.totalQuestions || totalQuestions}
+                      value={questionNumber}
+                      onChange={(e) => setQuestionNumber(parseInt(e.target.value))}
+                      className="mt-1"
+                      data-testid="input-direct-question-number"
+                    />
+                  </div>
+                  
                   <Button 
-                    variant="outline"
-                    onClick={() => {
-                      if (currentSession?.currentQuestionNumber > 1) {
-                        updateQuestionMutation.mutate(currentSession.currentQuestionNumber - 1);
-                      }
-                    }}
+                    className="w-full"
+                    onClick={() => updateQuestionMutation.mutate(questionNumber)}
                     disabled={
                       updateQuestionMutation.isPending || 
                       !currentSession ||
-                      (currentSession?.currentQuestionNumber <= 1)
+                      questionNumber < 1 ||
+                      questionNumber > (currentSession?.totalQuestions || totalQuestions)
                     }
-                    data-testid="button-prev-question"
-                  >
-                    <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
-                    Trước
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      const nextQuestion = (currentSession?.currentQuestionNumber || 1) + 1;
-                      const maxQuestions = currentSession?.totalQuestions || totalQuestions;
-                      if (nextQuestion <= maxQuestions) {
-                        updateQuestionMutation.mutate(nextQuestion);
-                      }
-                    }}
-                    disabled={
-                      updateQuestionMutation.isPending || 
-                      !currentSession ||
-                      (currentSession?.currentQuestionNumber >= (currentSession?.totalQuestions || totalQuestions))
-                    }
-                    data-testid="button-next-question"
+                    data-testid="button-go-to-question"
                   >
                     <ArrowRight className="h-4 w-4 mr-2" />
-                    Sau
+                    Chuyển tới câu {questionNumber}
                   </Button>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        if (currentSession?.currentQuestionNumber > 1) {
+                          updateQuestionMutation.mutate(currentSession.currentQuestionNumber - 1);
+                        }
+                      }}
+                      disabled={
+                        updateQuestionMutation.isPending || 
+                        !currentSession ||
+                        (currentSession?.currentQuestionNumber <= 1)
+                      }
+                      data-testid="button-prev-question"
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
+                      Trước
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        const nextQuestion = (currentSession?.currentQuestionNumber || 1) + 1;
+                        const maxQuestions = currentSession?.totalQuestions || totalQuestions;
+                        if (nextQuestion <= maxQuestions) {
+                          updateQuestionMutation.mutate(nextQuestion);
+                        }
+                      }}
+                      disabled={
+                        updateQuestionMutation.isPending || 
+                        !currentSession ||
+                        (currentSession?.currentQuestionNumber >= (currentSession?.totalQuestions || totalQuestions))
+                      }
+                      data-testid="button-next-question"
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Sau
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="pt-2 border-t">
@@ -589,7 +622,7 @@ export default function AdminDashboard() {
                               {option}: {count}
                             </div>
                             <div className={`text-xs text-${color}`}>
-                              ({questionPercentages[option]}%)
+                              ({questionPercentages[option as keyof typeof questionPercentages]}%)
                             </div>
                           </div>
                         ))}

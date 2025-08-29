@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import LiveStatistics from "./LiveStatistics";
-import { Check, BarChart3, LogOut, Clock } from "lucide-react";
+import { Check, BarChart3, LogOut, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface QuizInterfaceProps {
   student: {id: string, name: string};
@@ -82,6 +82,33 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
     queryKey: ["/api/quiz-sessions", session?.id, "questions", session?.currentQuestionNumber, "stats"],
     enabled: !!session?.id && !!session?.currentQuestionNumber,
     refetchInterval: 2000, // Refresh every 2 seconds
+  });
+
+  const updateQuestionMutation = useMutation({
+    mutationFn: async (questionNumber: number) => {
+      const response = await apiRequest("PATCH", `/api/quiz-sessions/${session.id}`, {
+        currentQuestionNumber: questionNumber
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/current"] });
+      // Reset answer state for new question
+      setSelectedAnswer(null);
+      setHasAnswered(false);
+      sendMessage({
+        type: 'question_changed',
+        sessionId: session.id,
+        questionNumber: session.currentQuestionNumber
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi chuyển câu hỏi",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const submitAnswerMutation = useMutation({
@@ -201,9 +228,57 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
         <Card className="shadow-lg">
           <CardContent className="p-8">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-foreground mb-4">
-                Câu hỏi số <span className="text-primary">{session.currentQuestionNumber}</span>
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                {/* Previous Question Button */}
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (session.currentQuestionNumber > 1) {
+                      updateQuestionMutation.mutate(session.currentQuestionNumber - 1);
+                    }
+                  }}
+                  disabled={
+                    updateQuestionMutation.isPending || 
+                    session.currentQuestionNumber <= 1 ||
+                    !session.isActive
+                  }
+                  className="w-24"
+                  data-testid="button-prev-question-student"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Trước
+                </Button>
+
+                {/* Question Title */}
+                <div className="flex-1">
+                  <h3 className="text-3xl font-bold text-foreground">
+                    Câu hỏi số <span className="text-primary">{session.currentQuestionNumber}</span> / {session.totalQuestions}
+                  </h3>
+                </div>
+
+                {/* Next Question Button */}
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (session.currentQuestionNumber < session.totalQuestions) {
+                      updateQuestionMutation.mutate(session.currentQuestionNumber + 1);
+                    }
+                  }}
+                  disabled={
+                    updateQuestionMutation.isPending || 
+                    session.currentQuestionNumber >= session.totalQuestions ||
+                    !session.isActive
+                  }
+                  className="w-24"
+                  data-testid="button-next-question-student"
+                >
+                  Sau
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+
               <p className="text-lg text-muted-foreground">Chọn một đáp án A, B, C hoặc D</p>
               
               {!session.isActive && (

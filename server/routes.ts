@@ -135,6 +135,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all questions history with statistics
+  app.get('/api/quiz-sessions/:sessionId/history', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const session = await storage.getCurrentQuizSession();
+      if (!session || session.id !== sessionId) {
+        return res.status(404).json({ error: "Quiz session not found" });
+      }
+
+      const history = [];
+      for (let q = 1; q <= session.totalQuestions; q++) {
+        const stats = await storage.getAnswerStats(sessionId, q);
+        history.push({
+          questionNumber: q,
+          stats: stats
+        });
+      }
+      
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching quiz history:", error);
+      res.status(500).json({ message: "Failed to fetch quiz history" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

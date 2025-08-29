@@ -48,6 +48,7 @@ export const quizSessions = pgTable("quiz_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").default("Quiz Session"),
   currentQuestionNumber: integer("current_question_number").default(1),
+  totalQuestions: integer("total_questions").notNull().default(10),
   duration: integer("duration").notNull().default(5), // minutes
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
@@ -75,6 +76,7 @@ export const insertStudentSchema = createInsertSchema(students).pick({
 export const insertQuizSessionSchema = createInsertSchema(quizSessions).pick({
   title: true,
   duration: true,
+  totalQuestions: true,
 });
 
 export const insertAnswerSchema = createInsertSchema(answers).pick({

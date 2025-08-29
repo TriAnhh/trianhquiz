@@ -18,6 +18,7 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [showStats, setShowStats] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -43,6 +44,9 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
             title: "Câu hỏi mới",
             description: `Chuyển sang câu hỏi số ${data.questionNumber}`,
           });
+          // Reset answer state for new question
+          setSelectedAnswer(null);
+          setHasAnswered(false);
         }
       }
     }
@@ -91,6 +95,7 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
       return response.json();
     },
     onSuccess: () => {
+      setHasAnswered(true);
       sendMessage({
         type: 'answer_submitted',
         studentId: student.id,
@@ -258,14 +263,23 @@ export default function QuizInterface({ student, session, onLogout }: QuizInterf
 
             {/* Live Statistics Button */}
             <div className="mt-8 text-center">
-              <Button 
-                variant="secondary"
-                onClick={() => setShowStats(true)}
-                data-testid="button-view-statistics"
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Xem thống kê trực tiếp
-              </Button>
+              {hasAnswered ? (
+                <Button 
+                  variant="secondary"
+                  onClick={() => setShowStats(true)}
+                  data-testid="button-view-statistics"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Xem thống kê trực tiếp
+                </Button>
+              ) : (
+                <div className="p-4 bg-muted/50 border border-border rounded-lg">
+                  <p className="text-muted-foreground text-sm">
+                    <BarChart3 className="h-4 w-4 inline mr-2" />
+                    Bạn cần trả lời câu hỏi trước khi xem thống kê
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

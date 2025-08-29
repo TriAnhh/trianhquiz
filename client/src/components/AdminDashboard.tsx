@@ -24,6 +24,7 @@ import { Link } from "wouter";
 
 export default function AdminDashboard() {
   const [quizDuration, setQuizDuration] = useState(5);
+  const [totalQuestions, setTotalQuestions] = useState(10);
   const [questionNumber, setQuestionNumber] = useState(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -52,6 +53,12 @@ export default function AdminDashboard() {
     queryKey: ["/api/quiz-sessions", currentSession?.id, "questions", currentSession?.currentQuestionNumber, "stats"],
     enabled: !!currentSession?.id && !!currentSession?.currentQuestionNumber,
     refetchInterval: 2000,
+  });
+
+  const { data: historyData } = useQuery<any>({
+    queryKey: ["/api/quiz-sessions", currentSession?.id, "history"],
+    enabled: !!currentSession?.id,
+    refetchInterval: 5000,
   });
 
   const createSessionMutation = useMutation({
@@ -98,6 +105,7 @@ export default function AdminDashboard() {
         const createResponse = await apiRequest("POST", "/api/quiz-sessions", {
           title: "Quiz Session",
           duration: quizDuration,
+          totalQuestions: totalQuestions,
         });
         const newSession = await createResponse.json();
         sessionId = newSession.id;
@@ -263,29 +271,46 @@ export default function AdminDashboard() {
         {/* Quiz Controls */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           
-          {/* Timer Control */}
+          {/* Quiz Setup Control */}
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 <Clock className="h-5 w-5 text-accent inline mr-2" />
-                Điều khiển Thời gian
+                Thiết lập Bài thi
               </h3>
               
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="quizDuration" className="text-sm font-medium text-foreground">
-                    Thời gian (phút)
-                  </Label>
-                  <Input
-                    id="quizDuration"
-                    type="number"
-                    min="1"
-                    max="60"
-                    value={quizDuration}
-                    onChange={(e) => setQuizDuration(parseInt(e.target.value))}
-                    className="mt-1"
-                    data-testid="input-quiz-duration"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="quizDuration" className="text-sm font-medium text-foreground">
+                      Thời gian (phút)
+                    </Label>
+                    <Input
+                      id="quizDuration"
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={quizDuration}
+                      onChange={(e) => setQuizDuration(parseInt(e.target.value))}
+                      className="mt-1"
+                      data-testid="input-quiz-duration"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="totalQuestions" className="text-sm font-medium text-foreground">
+                      Số câu hỏi
+                    </Label>
+                    <Input
+                      id="totalQuestions"
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={totalQuestions}
+                      onChange={(e) => setTotalQuestions(parseInt(e.target.value))}
+                      className="mt-1"
+                      data-testid="input-total-questions"
+                    />
+                  </div>
                 </div>
                 
                 <div className="flex gap-2">
@@ -318,35 +343,70 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 <BarChart3 className="h-5 w-5 text-primary inline mr-2" />
-                Câu hỏi hiện tại
+                Điều khiển Câu hỏi
               </h3>
               
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="questionNumber" className="text-sm font-medium text-foreground">
-                    Số câu hỏi
-                  </Label>
-                  <Input
-                    id="questionNumber"
-                    type="number"
-                    min="1"
-                    value={questionNumber}
-                    onChange={(e) => setQuestionNumber(parseInt(e.target.value))}
-                    className="mt-1"
-                    data-testid="input-question-number"
-                  />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary mb-1">
+                    {currentSession?.currentQuestionNumber || 1} / {currentSession?.totalQuestions || totalQuestions}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Câu hỏi hiện tại</div>
+                  
+                  {/* Progress Bar */}
+                  <div className="mt-3 bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-300" 
+                      style={{ 
+                        width: `${((currentSession?.currentQuestionNumber || 1) / (currentSession?.totalQuestions || totalQuestions)) * 100}%` 
+                      }}
+                    ></div>
+                  </div>
                 </div>
                 
-                <Button 
-                  className="w-full"
-                  variant="secondary"
-                  onClick={() => updateQuestionMutation.mutate(questionNumber)}
-                  disabled={updateQuestionMutation.isPending || !currentSession}
-                  data-testid="button-next-question"
-                >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Câu tiếp theo
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      if (currentSession?.currentQuestionNumber > 1) {
+                        updateQuestionMutation.mutate(currentSession.currentQuestionNumber - 1);
+                      }
+                    }}
+                    disabled={
+                      updateQuestionMutation.isPending || 
+                      !currentSession ||
+                      (currentSession?.currentQuestionNumber <= 1)
+                    }
+                    data-testid="button-prev-question"
+                  >
+                    <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
+                    Trước
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      const nextQuestion = (currentSession?.currentQuestionNumber || 1) + 1;
+                      const maxQuestions = currentSession?.totalQuestions || totalQuestions;
+                      if (nextQuestion <= maxQuestions) {
+                        updateQuestionMutation.mutate(nextQuestion);
+                      }
+                    }}
+                    disabled={
+                      updateQuestionMutation.isPending || 
+                      !currentSession ||
+                      (currentSession?.currentQuestionNumber >= (currentSession?.totalQuestions || totalQuestions))
+                    }
+                    data-testid="button-next-question"
+                  >
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Sau
+                  </Button>
+                </div>
+                
+                <div className="pt-2 border-t">
+                  <div className="text-sm text-muted-foreground text-center">
+                    {stats?.total || 0} học sinh đã trả lời
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -468,6 +528,98 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Quiz History - All Questions Statistics */}
+        {historyData && historyData.length > 0 && (
+          <Card className="shadow-lg mt-8">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-foreground">
+                  <BarChart3 className="h-6 w-6 text-accent inline mr-2" />
+                  Lịch sử thống kê tất cả câu hỏi
+                </h3>
+                <div className="text-sm text-muted-foreground">
+                  Tổng {historyData.length} câu hỏi
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {historyData.map((questionData: any, index: number) => {
+                  const total = questionData.stats?.total || 0;
+                  const questionPercentages = {
+                    A: total > 0 ? Math.round(((questionData.stats?.A || 0) / total) * 100) : 0,
+                    B: total > 0 ? Math.round(((questionData.stats?.B || 0) / total) * 100) : 0,
+                    C: total > 0 ? Math.round(((questionData.stats?.C || 0) / total) * 100) : 0,
+                    D: total > 0 ? Math.round(((questionData.stats?.D || 0) / total) * 100) : 0,
+                  };
+
+                  return (
+                    <div 
+                      key={questionData.questionNumber} 
+                      className={`border border-border rounded-lg p-4 ${
+                        questionData.questionNumber === currentSession?.currentQuestionNumber 
+                          ? 'border-primary bg-primary/5' 
+                          : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-semibold text-foreground">
+                          Câu {questionData.questionNumber}
+                          {questionData.questionNumber === currentSession?.currentQuestionNumber && (
+                            <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                              Hiện tại
+                            </span>
+                          )}
+                        </h4>
+                        <div className="text-sm text-muted-foreground">
+                          {total} câu trả lời
+                        </div>
+                      </div>
+
+                      {/* Quick Stats */}
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        {[
+                          { option: 'A', color: 'primary', count: questionData.stats?.A || 0 },
+                          { option: 'B', color: 'secondary', count: questionData.stats?.B || 0 },
+                          { option: 'C', color: 'accent', count: questionData.stats?.C || 0 },
+                          { option: 'D', color: 'destructive', count: questionData.stats?.D || 0 },
+                        ].map(({ option, color, count }) => (
+                          <div key={option} className="text-center">
+                            <div className={`text-sm font-bold text-${color}`}>
+                              {option}: {count}
+                            </div>
+                            <div className={`text-xs text-${color}`}>
+                              ({questionPercentages[option]}%)
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Mini Percentage Bars */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { option: 'A', color: 'primary', percent: questionPercentages.A },
+                          { option: 'B', color: 'secondary', percent: questionPercentages.B },
+                          { option: 'C', color: 'accent', percent: questionPercentages.C },
+                          { option: 'D', color: 'destructive', percent: questionPercentages.D },
+                        ].map(({ option, color, percent }) => (
+                          <div key={option} className="text-center">
+                            <div className="w-full bg-muted rounded-full h-1 mb-1">
+                              <div 
+                                className={`bg-${color} h-1 rounded-full transition-all duration-300`}
+                                style={{ width: `${percent}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

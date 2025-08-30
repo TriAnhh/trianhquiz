@@ -1,0 +1,1101 @@
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Trắc nghiệm ABCD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                }
+            },
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(220 10% 98%);
+            --foreground: hsl(220 10% 15%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(220 10% 15%);
+            --primary: hsl(217 91% 60%);
+            --primary-foreground: hsl(0 0% 100%);
+            --secondary: hsl(160 60% 45%);
+            --secondary-foreground: hsl(0 0% 100%);
+            --muted: hsl(220 14% 96%);
+            --muted-foreground: hsl(220 10% 45%);
+            --accent: hsl(38 92% 50%);
+            --accent-foreground: hsl(0 0% 100%);
+            --destructive: hsl(0 72% 51%);
+            --destructive-foreground: hsl(0 0% 100%);
+            --border: hsl(220 13% 91%);
+            --ring: hsl(217 91% 60%);
+            --radius: 8px;
+            --font-sans: "Inter", sans-serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--background);
+            color: var(--foreground);
+        }
+
+        .quiz-button {
+            transition: all 0.2s ease;
+        }
+
+        .quiz-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .quiz-button.selected {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            border-color: var(--primary);
+        }
+
+        .statistics-chart {
+            height: 300px;
+        }
+
+        .admin-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .modal-overlay {
+            backdrop-filter: blur(4px);
+        }
+
+        .countdown-timer {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background-color: var(--muted);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Admin Toggle Button -->
+    <button id="adminToggle" class="admin-toggle bg-muted hover:bg-muted/80 text-muted-foreground px-4 py-2 rounded-lg shadow-lg transition-colors">
+        <i class="fas fa-cog mr-2"></i>
+        Quản trị
+    </button>
+
+    <!-- @COMPONENT: StudentInterface -->
+    <div id="studentInterface" class="min-h-screen bg-background">
+        
+        <!-- Student Login Section -->
+        <!-- @COMPONENT: StudentLogin -->
+        <div id="studentLogin" class="min-h-screen flex items-center justify-center p-4">
+            <div class="bg-card border border-border rounded-lg shadow-xl p-8 w-full max-w-md">
+                <div class="text-center mb-8">
+                    <div class="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-graduation-cap text-primary text-2xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-foreground mb-2">Hệ thống Trắc nghiệm</h1>
+                    <p class="text-muted-foreground">Vui lòng nhập tên để bắt đầu làm bài</p>
+                </div>
+                
+                <form id="studentLoginForm" class="space-y-6">
+                    <div>
+                        <label for="studentName" class="block text-sm font-medium text-foreground mb-2">
+                            Họ và tên <span class="text-destructive">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="studentName" 
+                            required
+                            placeholder="Nhập họ và tên của bạn..."
+                            class="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring outline-none transition-all"
+                        />
+                    </div>
+                    
+                    <button 
+                        type="submit"
+                        class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                        <i class="fas fa-arrow-right mr-2"></i>
+                        Vào làm bài
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center text-sm text-muted-foreground">
+                    <i class="fas fa-users mr-1"></i>
+                    <span data-bind="activeStudents">23</span> học sinh đang online
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: StudentLogin -->
+
+        <!-- Quiz Interface -->
+        <!-- @COMPONENT: QuizInterface -->
+        <div id="quizInterface" class="hidden min-h-screen bg-background p-4">
+            <div class="max-w-4xl mx-auto">
+                
+                <!-- Header với timer -->
+                <div class="bg-card border border-border rounded-lg shadow-lg p-6 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-semibold text-foreground">
+                                Chào <span data-bind="currentStudent.name" class="text-primary">Nguyễn Văn A</span>
+                            </h2>
+                            <p class="text-muted-foreground">Câu hỏi trắc nghiệm ABCD</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="countdown-timer" id="countdownTimer" data-bind="timeRemaining">05:00</div>
+                            <div class="text-sm text-muted-foreground">Thời gian còn lại</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="progress-bar mt-4">
+                        <div class="progress-fill" style="width: 60%" data-bind="timeProgress"></div>
+                    </div>
+                </div>
+
+                <!-- Question Section -->
+                <div class="bg-card border border-border rounded-lg shadow-lg p-8">
+                    <div class="text-center mb-8">
+                        <h3 class="text-3xl font-bold text-foreground mb-4">
+                            Câu hỏi số <span data-bind="currentQuestionNumber" class="text-primary">1</span>
+                        </h3>
+                        <p class="text-lg text-muted-foreground">Chọn một đáp án A, B, C hoặc D</p>
+                    </div>
+
+                    <!-- Answer Options -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                        <button 
+                            class="quiz-button bg-card hover:bg-muted border-2 border-border rounded-lg p-6 text-left transition-all"
+                            data-answer="A"
+                            data-event="click:selectAnswer"
+                        >
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-lg mr-4">
+                                    A
+                                </div>
+                                <span class="text-lg font-medium">Đáp án A</span>
+                            </div>
+                        </button>
+
+                        <button 
+                            class="quiz-button bg-card hover:bg-muted border-2 border-border rounded-lg p-6 text-left transition-all"
+                            data-answer="B"
+                            data-event="click:selectAnswer"
+                        >
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-secondary/10 text-secondary rounded-full flex items-center justify-center font-bold text-lg mr-4">
+                                    B
+                                </div>
+                                <span class="text-lg font-medium">Đáp án B</span>
+                            </div>
+                        </button>
+
+                        <button 
+                            class="quiz-button bg-card hover:bg-muted border-2 border-border rounded-lg p-6 text-left transition-all"
+                            data-answer="C"
+                            data-event="click:selectAnswer"
+                        >
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-accent/10 text-accent rounded-full flex items-center justify-center font-bold text-lg mr-4">
+                                    C
+                                </div>
+                                <span class="text-lg font-medium">Đáp án C</span>
+                            </div>
+                        </button>
+
+                        <button 
+                            class="quiz-button bg-card hover:bg-muted border-2 border-border rounded-lg p-6 text-left transition-all"
+                            data-answer="D"
+                            data-event="click:selectAnswer"
+                        >
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center font-bold text-lg mr-4">
+                                    D
+                                </div>
+                                <span class="text-lg font-medium">Đáp án D</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Selected Answer Display -->
+                    <div id="selectedAnswer" class="hidden mt-8 p-4 bg-primary/10 border border-primary/20 rounded-lg text-center">
+                        <p class="text-primary font-medium">
+                            <i class="fas fa-check mr-2"></i>
+                            Bạn đã chọn đáp án: <span class="font-bold text-lg" data-bind="selectedOption">A</span>
+                        </p>
+                    </div>
+
+                    <!-- Live Statistics Preview (Optional) -->
+                    <div class="mt-8 text-center">
+                        <button 
+                            id="viewStatsBtn"
+                            class="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-6 py-3 rounded-lg transition-colors"
+                            data-event="click:toggleStatistics"
+                        >
+                            <i class="fas fa-chart-bar mr-2"></i>
+                            Xem thống kê trực tiếp
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: QuizInterface -->
+
+    </div>
+    <!-- @END_COMPONENT: StudentInterface -->
+
+    <!-- @COMPONENT: AdminInterface -->
+    <div id="adminInterface" class="hidden min-h-screen bg-background">
+        
+        <!-- Admin Login Modal -->
+        <!-- @COMPONENT: AdminLogin -->
+        <div id="adminLoginModal" class="fixed inset-0 bg-black/50 modal-overlay flex items-center justify-center p-4 z-50">
+            <div class="bg-card border border-border rounded-lg shadow-xl p-8 w-full max-w-md">
+                <div class="text-center mb-6">
+                    <div class="bg-accent/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-shield-alt text-accent text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-foreground mb-2">Đăng nhập Quản trị</h2>
+                    <p class="text-muted-foreground">Vui lòng nhập mật khẩu để tiếp tục</p>
+                </div>
+                
+                <form id="adminLoginForm" class="space-y-6">
+                    <div>
+                        <label for="adminPassword" class="block text-sm font-medium text-foreground mb-2">
+                            Mật khẩu <span class="text-destructive">*</span>
+                        </label>
+                        <input 
+                            type="password" 
+                            id="adminPassword" 
+                            required
+                            placeholder="Nhập mật khẩu quản trị..."
+                            class="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring outline-none transition-all"
+                        />
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button 
+                            type="button"
+                            id="cancelAdminLogin"
+                            class="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground font-medium py-3 px-4 rounded-lg transition-colors"
+                        >
+                            Hủy
+                        </button>
+                        <button 
+                            type="submit"
+                            class="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-medium py-3 px-4 rounded-lg transition-colors"
+                        >
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            Đăng nhập
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: AdminLogin -->
+
+        <!-- Admin Dashboard -->
+        <!-- @COMPONENT: AdminDashboard -->
+        <div id="adminDashboard" class="hidden p-6">
+            <div class="max-w-7xl mx-auto">
+                
+                <!-- Admin Header -->
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold text-foreground">Bảng điều khiển Quản trị</h1>
+                        <p class="text-muted-foreground">Quản lý bài trắc nghiệm và xem thống kê</p>
+                    </div>
+                    <button 
+                        id="logoutAdmin"
+                        class="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-lg transition-colors"
+                        data-event="click:logoutAdmin"
+                    >
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Đăng xuất
+                    </button>
+                </div>
+
+                <!-- Quiz Controls -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    
+                    <!-- Timer Control -->
+                    <div class="bg-card border border-border rounded-lg shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">
+                            <i class="fas fa-clock text-accent mr-2"></i>
+                            Điều khiển Thời gian
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Thời gian (phút)</label>
+                                <input 
+                                    type="number" 
+                                    id="quizDuration"
+                                    min="1" 
+                                    max="60" 
+                                    value="5"
+                                    data-bind="quizSettings.duration"
+                                    class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring outline-none"
+                                />
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <button 
+                                    id="startQuiz"
+                                    class="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-lg transition-colors"
+                                    data-event="click:startQuiz"
+                                >
+                                    <i class="fas fa-play mr-2"></i>
+                                    Bắt đầu
+                                </button>
+                                <button 
+                                    id="stopQuiz"
+                                    class="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground py-2 px-4 rounded-lg transition-colors"
+                                    data-event="click:stopQuiz"
+                                >
+                                    <i class="fas fa-stop mr-2"></i>
+                                    Dừng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Question Control -->
+                    <div class="bg-card border border-border rounded-lg shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">
+                            <i class="fas fa-question-circle text-primary mr-2"></i>
+                            Câu hỏi hiện tại
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Số câu hỏi</label>
+                                <input 
+                                    type="number" 
+                                    id="questionNumber"
+                                    min="1" 
+                                    value="1"
+                                    data-bind="currentQuestion.number"
+                                    class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring outline-none"
+                                />
+                            </div>
+                            
+                            <button 
+                                id="nextQuestion"
+                                class="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground py-2 px-4 rounded-lg transition-colors"
+                                data-event="click:nextQuestion"
+                            >
+                                <i class="fas fa-arrow-right mr-2"></i>
+                                Câu tiếp theo
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Status -->
+                    <div class="bg-card border border-border rounded-lg shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4">
+                            <i class="fas fa-users text-secondary mr-2"></i>
+                            Trạng thái trực tiếp
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-muted-foreground">Học sinh online:</span>
+                                <span class="font-semibold text-foreground" data-bind="stats.activeStudents">23</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-muted-foreground">Đã trả lời:</span>
+                                <span class="font-semibold text-foreground" data-bind="stats.answeredStudents">18</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-muted-foreground">Trạng thái:</span>
+                                <span class="px-2 py-1 bg-primary/10 text-primary rounded text-sm font-medium" data-bind="quizStatus">Đang diễn ra</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time Statistics -->
+                <div class="bg-card border border-border rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-semibold text-foreground">
+                            <i class="fas fa-chart-bar text-accent mr-2"></i>
+                            Thống kê câu trả lời trực tiếp
+                        </h3>
+                        <div class="flex gap-2">
+                            <button 
+                                id="resetStats"
+                                class="bg-muted hover:bg-muted/80 text-muted-foreground px-4 py-2 rounded-lg transition-colors"
+                                data-event="click:resetStatistics"
+                            >
+                                <i class="fas fa-redo mr-2"></i>
+                                Reset
+                            </button>
+                            <button 
+                                id="exportStats"
+                                class="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-4 py-2 rounded-lg transition-colors"
+                                data-event="click:exportStatistics"
+                            >
+                                <i class="fas fa-download mr-2"></i>
+                                Xuất dữ liệu
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Answer Distribution Chart -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <!-- @MAP: answerOptions.map(option => ( -->
+                        <div class="text-center">
+                            <div class="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-2">
+                                <div class="text-3xl font-bold text-primary mb-1" data-bind="stats.optionA">12</div>
+                                <div class="text-sm text-muted-foreground">người chọn</div>
+                            </div>
+                            <div class="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg mx-auto">
+                                A
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <div class="bg-secondary/10 border border-secondary/20 rounded-lg p-4 mb-2">
+                                <div class="text-3xl font-bold text-secondary mb-1" data-bind="stats.optionB">8</div>
+                                <div class="text-sm text-muted-foreground">người chọn</div>
+                            </div>
+                            <div class="w-12 h-12 bg-secondary text-secondary-foreground rounded-full flex items-center justify-center font-bold text-lg mx-auto">
+                                B
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <div class="bg-accent/10 border border-accent/20 rounded-lg p-4 mb-2">
+                                <div class="text-3xl font-bold text-accent mb-1" data-bind="stats.optionC">5</div>
+                                <div class="text-sm text-muted-foreground">người chọn</div>
+                            </div>
+                            <div class="w-12 h-12 bg-accent text-accent-foreground rounded-full flex items-center justify-center font-bold text-lg mx-auto">
+                                C
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <div class="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-2">
+                                <div class="text-3xl font-bold text-destructive mb-1" data-bind="stats.optionD">3</div>
+                                <div class="text-sm text-muted-foreground">người chọn</div>
+                            </div>
+                            <div class="w-12 h-12 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center font-bold text-lg mx-auto">
+                                D
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+
+                    <!-- Percentage Bars -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold text-sm">A</div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm text-muted-foreground">Đáp án A</span>
+                                    <span class="text-sm font-medium text-primary" data-bind="stats.percentA">42.9%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-primary h-2 rounded-full" style="width: 42.9%" data-bind="stats.percentABar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 bg-secondary text-secondary-foreground rounded flex items-center justify-center font-bold text-sm">B</div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm text-muted-foreground">Đáp án B</span>
+                                    <span class="text-sm font-medium text-secondary" data-bind="stats.percentB">28.6%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-secondary h-2 rounded-full" style="width: 28.6%" data-bind="stats.percentBBar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 bg-accent text-accent-foreground rounded flex items-center justify-center font-bold text-sm">C</div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm text-muted-foreground">Đáp án C</span>
+                                    <span class="text-sm font-medium text-accent" data-bind="stats.percentC">17.9%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-accent h-2 rounded-full" style="width: 17.9%" data-bind="stats.percentCBar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 bg-destructive text-destructive-foreground rounded flex items-center justify-center font-bold text-sm">D</div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm text-muted-foreground">Đáp án D</span>
+                                    <span class="text-sm font-medium text-destructive" data-bind="stats.percentD">10.7%</span>
+                                </div>
+                                <div class="w-full bg-muted rounded-full h-2">
+                                    <div class="bg-destructive h-2 rounded-full" style="width: 10.7%" data-bind="stats.percentDBar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student List -->
+                <div class="bg-card border border-border rounded-lg shadow-lg p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-foreground mb-4">
+                        <i class="fas fa-list text-primary mr-2"></i>
+                        Danh sách học sinh và câu trả lời
+                    </h3>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-border">
+                                    <th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">STT</th>
+                                    <th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Tên học sinh</th>
+                                    <th class="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Câu trả lời</th>
+                                    <th class="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Thời gian</th>
+                                    <th class="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- @MAP: students.map((student, index) => ( -->
+                                <tr class="border-b border-border hover:bg-muted/50" data-mock="true">
+                                    <td class="py-3 px-2 text-sm text-foreground">1</td>
+                                    <td class="py-3 px-2 text-sm text-foreground">Nguyễn Văn A</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="w-8 h-8 bg-primary text-primary-foreground rounded-full inline-flex items-center justify-center font-bold text-sm">A</span>
+                                    </td>
+                                    <td class="py-3 px-2 text-center text-sm text-muted-foreground">14:32:15</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">Đã trả lời</span>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-border hover:bg-muted/50" data-mock="true">
+                                    <td class="py-3 px-2 text-sm text-foreground">2</td>
+                                    <td class="py-3 px-2 text-sm text-foreground">Trần Thị B</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="w-8 h-8 bg-secondary text-secondary-foreground rounded-full inline-flex items-center justify-center font-bold text-sm">B</span>
+                                    </td>
+                                    <td class="py-3 px-2 text-center text-sm text-muted-foreground">14:32:18</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">Đã trả lời</span>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-border hover:bg-muted/50" data-mock="true">
+                                    <td class="py-3 px-2 text-sm text-foreground">3</td>
+                                    <td class="py-3 px-2 text-sm text-foreground">Lê Văn C</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="text-muted-foreground text-sm">-</span>
+                                    </td>
+                                    <td class="py-3 px-2 text-center text-sm text-muted-foreground">-</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="px-2 py-1 bg-muted text-muted-foreground rounded text-xs font-medium">Chưa trả lời</span>
+                                    </td>
+                                </tr>
+                                <!-- @END_MAP )) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: AdminDashboard -->
+
+    </div>
+    <!-- @END_COMPONENT: AdminInterface -->
+
+    <!-- Live Statistics Modal for Students -->
+    <!-- @COMPONENT: LiveStatisticsModal -->
+    <div id="liveStatsModal" class="hidden fixed inset-0 bg-black/50 modal-overlay flex items-center justify-center p-4 z-50">
+        <div class="bg-card border border-border rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-foreground">
+                        <i class="fas fa-chart-bar text-accent mr-2"></i>
+                        Thống kê trực tiếp
+                    </h2>
+                    <button 
+                        id="closeLiveStats"
+                        class="text-muted-foreground hover:text-foreground transition-colors"
+                        data-event="click:closeLiveStatistics"
+                    >
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Live Answer Distribution -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="text-center">
+                        <div class="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-2">
+                            <div class="text-2xl font-bold text-primary mb-1" data-bind="liveStats.optionA">12</div>
+                            <div class="text-xs text-muted-foreground">lượt chọn</div>
+                        </div>
+                        <div class="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold mx-auto">
+                            A
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="bg-secondary/10 border border-secondary/20 rounded-lg p-4 mb-2">
+                            <div class="text-2xl font-bold text-secondary mb-1" data-bind="liveStats.optionB">8</div>
+                            <div class="text-xs text-muted-foreground">lượt chọn</div>
+                        </div>
+                        <div class="w-10 h-10 bg-secondary text-secondary-foreground rounded-full flex items-center justify-center font-bold mx-auto">
+                            B
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="bg-accent/10 border border-accent/20 rounded-lg p-4 mb-2">
+                            <div class="text-2xl font-bold text-accent mb-1" data-bind="liveStats.optionC">5</div>
+                            <div class="text-xs text-muted-foreground">lượt chọn</div>
+                        </div>
+                        <div class="w-10 h-10 bg-accent text-accent-foreground rounded-full flex items-center justify-center font-bold mx-auto">
+                            C
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-2">
+                            <div class="text-2xl font-bold text-destructive mb-1" data-bind="liveStats.optionD">3</div>
+                            <div class="text-xs text-muted-foreground">lượt chọn</div>
+                        </div>
+                        <div class="w-10 h-10 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center font-bold mx-auto">
+                            D
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center text-sm text-muted-foreground">
+                    <i class="fas fa-sync-alt mr-1"></i>
+                    Thống kê được cập nhật theo thời gian thực
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: LiveStatisticsModal -->
+
+    <script>
+        // TODO: Implement WebSocket connections for real-time synchronization
+        // TODO: Implement user authentication and session management
+        // TODO: Implement timer functionality with countdown
+        // TODO: Implement data persistence (local storage or backend integration)
+        
+        (function() {
+            // Application state
+            let appState = {
+                currentView: 'student-login', // student-login, quiz, admin
+                currentStudent: null,
+                isQuizActive: false,
+                quizStartTime: null,
+                quizDuration: 5, // minutes
+                selectedAnswer: null,
+                isAdminLoggedIn: false
+            };
+
+            // Mock data for demonstration
+            let mockStats = {
+                activeStudents: 23,
+                answeredStudents: 18,
+                optionA: 12,
+                optionB: 8,
+                optionC: 5,
+                optionD: 3
+            };
+
+            // DOM elements
+            const elements = {
+                studentInterface: document.getElementById('studentInterface'),
+                adminInterface: document.getElementById('adminInterface'),
+                studentLogin: document.getElementById('studentLogin'),
+                quizInterface: document.getElementById('quizInterface'),
+                adminLoginModal: document.getElementById('adminLoginModal'),
+                adminDashboard: document.getElementById('adminDashboard'),
+                liveStatsModal: document.getElementById('liveStatsModal'),
+                adminToggle: document.getElementById('adminToggle'),
+                countdownTimer: document.getElementById('countdownTimer')
+            };
+
+            // Navigation functions
+            function showStudentLogin() {
+                elements.studentLogin.classList.remove('hidden');
+                elements.quizInterface.classList.add('hidden');
+                elements.adminInterface.classList.add('hidden');
+                appState.currentView = 'student-login';
+            }
+
+            function showQuizInterface() {
+                elements.studentLogin.classList.add('hidden');
+                elements.quizInterface.classList.remove('hidden');
+                elements.adminInterface.classList.add('hidden');
+                appState.currentView = 'quiz';
+                startQuizTimer();
+            }
+
+            function showAdminInterface() {
+                elements.studentInterface.classList.add('hidden');
+                elements.adminInterface.classList.remove('hidden');
+                elements.adminLoginModal.classList.remove('hidden');
+                elements.adminDashboard.classList.add('hidden');
+                appState.currentView = 'admin';
+            }
+
+            function showAdminDashboard() {
+                elements.adminLoginModal.classList.add('hidden');
+                elements.adminDashboard.classList.remove('hidden');
+                updateAdminStats();
+            }
+
+            // Timer functionality
+            function startQuizTimer() {
+                if (!appState.isQuizActive) return;
+                
+                const startTime = Date.now();
+                appState.quizStartTime = startTime;
+                
+                const timer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const totalSeconds = appState.quizDuration * 60;
+                    const remaining = Math.max(0, totalSeconds - elapsed);
+                    
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    
+                    if (elements.countdownTimer) {
+                        elements.countdownTimer.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                    
+                    // Update progress bar
+                    const progressBars = document.querySelectorAll('.progress-fill');
+                    const progress = Math.max(0, (remaining / totalSeconds) * 100);
+                    progressBars.forEach(bar => {
+                        bar.style.width = `${progress}%`;
+                    });
+                    
+                    if (remaining <= 0) {
+                        clearInterval(timer);
+                        // TODO: Handle quiz timeout
+                        alert('Hết thời gian làm bài!');
+                    }
+                }, 1000);
+            }
+
+            // Answer selection
+            function selectAnswer(answer) {
+                // Remove previous selections
+                document.querySelectorAll('.quiz-button').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                
+                // Add selection to clicked button
+                event.target.closest('.quiz-button').classList.add('selected');
+                
+                appState.selectedAnswer = answer;
+                
+                // Show selected answer
+                const selectedAnswerEl = document.getElementById('selectedAnswer');
+                if (selectedAnswerEl) {
+                    selectedAnswerEl.classList.remove('hidden');
+                    const answerSpan = selectedAnswerEl.querySelector('[data-bind="selectedOption"]');
+                    if (answerSpan) answerSpan.textContent = answer;
+                }
+                
+                // TODO: Send answer to server
+                updateMockStats(answer);
+            }
+
+            // Update mock statistics
+            function updateMockStats(answer) {
+                if (answer === 'A') mockStats.optionA++;
+                else if (answer === 'B') mockStats.optionB++;
+                else if (answer === 'C') mockStats.optionC++;
+                else if (answer === 'D') mockStats.optionD++;
+                
+                mockStats.answeredStudents++;
+                updateAdminStats();
+            }
+
+            // Update admin statistics display
+            function updateAdminStats() {
+                const total = mockStats.optionA + mockStats.optionB + mockStats.optionC + mockStats.optionD;
+                
+                // Update count displays
+                document.querySelectorAll('[data-bind="stats.optionA"]').forEach(el => {
+                    el.textContent = mockStats.optionA;
+                });
+                document.querySelectorAll('[data-bind="stats.optionB"]').forEach(el => {
+                    el.textContent = mockStats.optionB;
+                });
+                document.querySelectorAll('[data-bind="stats.optionC"]').forEach(el => {
+                    el.textContent = mockStats.optionC;
+                });
+                document.querySelectorAll('[data-bind="stats.optionD"]').forEach(el => {
+                    el.textContent = mockStats.optionD;
+                });
+
+                // Update percentages
+                if (total > 0) {
+                    const percentA = ((mockStats.optionA / total) * 100).toFixed(1);
+                    const percentB = ((mockStats.optionB / total) * 100).toFixed(1);
+                    const percentC = ((mockStats.optionC / total) * 100).toFixed(1);
+                    const percentD = ((mockStats.optionD / total) * 100).toFixed(1);
+
+                    document.querySelectorAll('[data-bind="stats.percentA"]').forEach(el => {
+                        el.textContent = `${percentA}%`;
+                    });
+                    document.querySelectorAll('[data-bind="stats.percentB"]').forEach(el => {
+                        el.textContent = `${percentB}%`;
+                    });
+                    document.querySelectorAll('[data-bind="stats.percentC"]').forEach(el => {
+                        el.textContent = `${percentC}%`;
+                    });
+                    document.querySelectorAll('[data-bind="stats.percentD"]').forEach(el => {
+                        el.textContent = `${percentD}%`;
+                    });
+
+                    // Update progress bars
+                    document.querySelectorAll('[data-bind="stats.percentABar"]').forEach(el => {
+                        el.style.width = `${percentA}%`;
+                    });
+                    document.querySelectorAll('[data-bind="stats.percentBBar"]').forEach(el => {
+                        el.style.width = `${percentB}%`;
+                    });
+                    document.querySelectorAll('[data-bind="stats.percentCBar"]').forEach(el => {
+                        el.style.width = `${percentC}%`;
+                    });
+                    document.querySelectorAll('[data-bind="stats.percentDBar"]').forEach(el => {
+                        el.style.width = `${percentD}%`;
+                    });
+                }
+            }
+
+            // Event listeners
+            document.addEventListener('DOMContentLoaded', function() {
+                
+                // Student login form
+                const studentLoginForm = document.getElementById('studentLoginForm');
+                if (studentLoginForm) {
+                    studentLoginForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const name = document.getElementById('studentName').value.trim();
+                        if (name) {
+                            appState.currentStudent = { name: name };
+                            showQuizInterface();
+                        }
+                    });
+                }
+
+                // Admin toggle
+                if (elements.adminToggle) {
+                    elements.adminToggle.addEventListener('click', function() {
+                        if (appState.currentView === 'admin') {
+                            showStudentLogin();
+                        } else {
+                            showAdminInterface();
+                        }
+                    });
+                }
+
+                // Admin login form
+                const adminLoginForm = document.getElementById('adminLoginForm');
+                if (adminLoginForm) {
+                    adminLoginForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const password = document.getElementById('adminPassword').value;
+                        // TODO: Implement proper authentication
+                        if (password === 'admin123' || password.length > 0) {
+                            appState.isAdminLoggedIn = true;
+                            showAdminDashboard();
+                        } else {
+                            alert('Mật khẩu không đúng!');
+                        }
+                    });
+                }
+
+                // Cancel admin login
+                const cancelAdminLogin = document.getElementById('cancelAdminLogin');
+                if (cancelAdminLogin) {
+                    cancelAdminLogin.addEventListener('click', function() {
+                        showStudentLogin();
+                    });
+                }
+
+                // Quiz control buttons
+                const startQuizBtn = document.getElementById('startQuiz');
+                if (startQuizBtn) {
+                    startQuizBtn.addEventListener('click', function() {
+                        appState.isQuizActive = true;
+                        const duration = document.getElementById('quizDuration').value;
+                        appState.quizDuration = parseInt(duration);
+                        // TODO: Broadcast quiz start to all students
+                        alert('Bài trắc nghiệm đã bắt đầu!');
+                    });
+                }
+
+                const stopQuizBtn = document.getElementById('stopQuiz');
+                if (stopQuizBtn) {
+                    stopQuizBtn.addEventListener('click', function() {
+                        appState.isQuizActive = false;
+                        // TODO: Broadcast quiz stop to all students
+                        alert('Bài trắc nghiệm đã dừng!');
+                    });
+                }
+
+                // Answer selection buttons
+                document.querySelectorAll('[data-answer]').forEach(button => {
+                    button.addEventListener('click', function() {
+                        if (!appState.isQuizActive) {
+                            alert('Bài trắc nghiệm chưa bắt đầu!');
+                            return;
+                        }
+                        const answer = this.getAttribute('data-answer');
+                        selectAnswer(answer);
+                    });
+                });
+
+                // Live statistics modal
+                const viewStatsBtn = document.getElementById('viewStatsBtn');
+                if (viewStatsBtn) {
+                    viewStatsBtn.addEventListener('click', function() {
+                        elements.liveStatsModal.classList.remove('hidden');
+                        updateLiveStats();
+                    });
+                }
+
+                const closeLiveStats = document.getElementById('closeLiveStats');
+                if (closeLiveStats) {
+                    closeLiveStats.addEventListener('click', function() {
+                        elements.liveStatsModal.classList.add('hidden');
+                    });
+                }
+
+                // Reset and export buttons
+                const resetStatsBtn = document.getElementById('resetStats');
+                if (resetStatsBtn) {
+                    resetStatsBtn.addEventListener('click', function() {
+                        if (confirm('Bạn có chắc muốn reset thống kê?')) {
+                            mockStats = {
+                                activeStudents: 23,
+                                answeredStudents: 0,
+                                optionA: 0,
+                                optionB: 0,
+                                optionC: 0,
+                                optionD: 0
+                            };
+                            updateAdminStats();
+                        }
+                    });
+                }
+
+                const exportStatsBtn = document.getElementById('exportStats');
+                if (exportStatsBtn) {
+                    exportStatsBtn.addEventListener('click', function() {
+                        // TODO: Implement data export functionality
+                        alert('Tính năng xuất dữ liệu sẽ được triển khai!');
+                    });
+                }
+
+                // Logout admin
+                const logoutAdmin = document.getElementById('logoutAdmin');
+                if (logoutAdmin) {
+                    logoutAdmin.addEventListener('click', function() {
+                        appState.isAdminLoggedIn = false;
+                        showStudentLogin();
+                    });
+                }
+
+                // Next question button
+                const nextQuestionBtn = document.getElementById('nextQuestion');
+                if (nextQuestionBtn) {
+                    nextQuestionBtn.addEventListener('click', function() {
+                        const questionNumber = document.getElementById('questionNumber').value;
+                        // TODO: Implement question navigation
+                        alert(`Chuyển sang câu hỏi số ${questionNumber}`);
+                    });
+                }
+            });
+
+            // Update live statistics in modal
+            function updateLiveStats() {
+                document.querySelectorAll('[data-bind="liveStats.optionA"]').forEach(el => {
+                    el.textContent = mockStats.optionA;
+                });
+                document.querySelectorAll('[data-bind="liveStats.optionB"]').forEach(el => {
+                    el.textContent = mockStats.optionB;
+                });
+                document.querySelectorAll('[data-bind="liveStats.optionC"]').forEach(el => {
+                    el.textContent = mockStats.optionC;
+                });
+                document.querySelectorAll('[data-bind="liveStats.optionD"]').forEach(el => {
+                    el.textContent = mockStats.optionD;
+                });
+            }
+
+            // Initialize app
+            showStudentLogin();
+        })();
+    </script>
+</body>
+</html>
